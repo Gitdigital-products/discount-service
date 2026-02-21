@@ -1,0 +1,32 @@
+name: Mirror Sync (With Pruning)
+
+on:
+  schedule:
+    - cron: '0 * * * *' 
+  workflow_dispatch: 
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Sync and Prune discount-service
+        id: sync_step
+        run: |
+          # 1. Clone source as a bare repo
+          git clone --mirror https://github.com/Gitdigital-products/discount-service.git temp-mirror
+          cd temp-mirror
+          
+          # 2. Set the target destination
+          git remote set-url --push origin https://x-access-token:${{ secrets.SYNC_TOKEN }}@github.com/your-target-org/discount-service.git
+          
+          # 3. Mirror push with --prune to remove deleted source branches
+          git push --mirror --prune
+          
+      - name: Slack Notification
+        uses: rtCamp/action-slack-notify@v2
+        if: always() # Runs on success or failure
+        env:
+          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+          SLACK_COLOR: ${{ job.status == 'success' ? '#36a64f' : '#ff0000' }}
+          SLACK_TITLE: "Mirror Sync: ${{ job.status }}"
+          SLACK_MESSAGE: "Discount-service sync completed with status: ${{ job.status }}"
