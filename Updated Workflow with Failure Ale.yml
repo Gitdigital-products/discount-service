@@ -1,0 +1,27 @@
+name: Mirror Sync
+
+on:
+  schedule:
+    - cron: '0 * * * *' 
+  workflow_dispatch: 
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Sync discount-service
+        id: sync_step
+        run: |
+          git clone --mirror https://github.com/Gitdigital-products/discount-service.git temp-mirror
+          cd temp-mirror
+          git remote set-url --push origin https://x-access-token:${{ secrets.SYNC_TOKEN }}@github.com/your-target-org/discount-service.git
+          git push --mirror
+
+      - name: Notify on Failure
+        if: failure()
+        uses: rtCamp/action-slack-notify@v2
+        env:
+          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+          SLACK_COLOR: '#ff0000'
+          SLACK_MESSAGE: 'Discount Service Mirror Sync Failed! Check the GitHub Actions logs.'
+          SLACK_TITLE: 'Sync Error'
